@@ -6,7 +6,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const pageContent = {
   login: {
     eyebrow: 'مدیریت روز، ساده‌تر از همیشه',
-    title: 'دوباره خوش آمدید',
+    title: 'خوش آمدید',
     description: 'برای دیدن کارهای امروز، وارد حساب خود شوید.',
     submit: 'ورود به دی‌میت',
     question: 'هنوز حساب کاربری ندارید؟',
@@ -171,7 +171,6 @@ function AuthPage({ mode }) {
   const isSignup = mode === 'signup';
   const content = pageContent[mode];
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [confirmVisible, setConfirmVisible] = useState(false);
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState('');
 
@@ -191,13 +190,17 @@ function AuthPage({ mode }) {
     const values = Object.fromEntries(new FormData(form));
     const nextErrors = {};
 
-    if (isSignup && values.fullName.trim().length < 2) {
-      nextErrors.fullName = 'لطفاً نام و نام خانوادگی خود را وارد کنید.';
+    if (isSignup && !values.username.trim()) {
+      nextErrors.username = 'وارد کردن نام کاربری الزامی است.';
     }
 
-    if (!values.email) {
+    if (!isSignup && !values.identifier.trim()) {
+      nextErrors.identifier = 'وارد کردن ایمیل یا نام کاربری الزامی است.';
+    }
+
+    if (isSignup && !values.email) {
       nextErrors.email = 'وارد کردن ایمیل الزامی است.';
-    } else if (!EMAIL_PATTERN.test(values.email)) {
+    } else if (isSignup && !EMAIL_PATTERN.test(values.email)) {
       nextErrors.email = 'یک ایمیل معتبر وارد کنید.';
     }
 
@@ -205,10 +208,6 @@ function AuthPage({ mode }) {
       nextErrors.password = 'وارد کردن رمز عبور الزامی است.';
     } else if (isSignup && values.password.length < 8) {
       nextErrors.password = 'رمز عبور باید دست‌کم ۸ نویسه داشته باشد.';
-    }
-
-    if (isSignup && values.confirmPassword !== values.password) {
-      nextErrors.confirmPassword = 'تکرار رمز عبور با رمز عبور یکسان نیست.';
     }
 
     if (isSignup && values.terms !== 'accepted') {
@@ -252,51 +251,77 @@ function AuthPage({ mode }) {
             <form className="auth-form" onSubmit={handleSubmit} onChange={clearFeedback} noValidate>
               {isSignup && (
                 <div className="form-field">
-                  <label htmlFor="fullName">
-                    نام و نام خانوادگی
+                  <label htmlFor="username">
+                    نام کاربری
                     <span aria-hidden="true">*</span>
                   </label>
-                  <div className={`input-shell ${errors.fullName ? 'input-error' : ''}`}>
+                  <div className={`input-shell ${errors.username ? 'input-error' : ''}`}>
                     <span className="field-icon">
                       <UserIcon />
                     </span>
                     <input
-                      id="fullName"
-                      name="fullName"
+                      id="username"
+                      name="username"
                       type="text"
-                      autoComplete="name"
-                      placeholder="برای نمونه: سارا احمدی"
-                      aria-invalid={Boolean(errors.fullName)}
-                      aria-describedby={errors.fullName ? 'fullName-error' : undefined}
+                      autoComplete="username"
+                      placeholder="برای نمونه: sara_ahmadi"
+                      dir="ltr"
+                      aria-invalid={Boolean(errors.username)}
+                      aria-describedby={errors.username ? 'username-error' : undefined}
                     />
                   </div>
-                  <FieldError id="fullName-error" message={errors.fullName} />
+                  <FieldError id="username-error" message={errors.username} />
                 </div>
               )}
 
-              <div className="form-field">
-                <label htmlFor="email">
-                  ایمیل
-                  <span aria-hidden="true">*</span>
-                </label>
-                <div className={`input-shell ${errors.email ? 'input-error' : ''}`}>
-                  <span className="field-icon">
-                    <MailIcon />
-                  </span>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    inputMode="email"
-                    autoComplete="email"
-                    placeholder="name@example.com"
-                    dir="ltr"
-                    aria-invalid={Boolean(errors.email)}
-                    aria-describedby={errors.email ? 'email-error' : undefined}
-                  />
+              {isSignup ? (
+                <div className="form-field">
+                  <label htmlFor="email">
+                    ایمیل
+                    <span aria-hidden="true">*</span>
+                  </label>
+                  <div className={`input-shell ${errors.email ? 'input-error' : ''}`}>
+                    <span className="field-icon">
+                      <MailIcon />
+                    </span>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      placeholder="name@example.com"
+                      dir="ltr"
+                      aria-invalid={Boolean(errors.email)}
+                      aria-describedby={errors.email ? 'email-error' : undefined}
+                    />
+                  </div>
+                  <FieldError id="email-error" message={errors.email} />
                 </div>
-                <FieldError id="email-error" message={errors.email} />
-              </div>
+              ) : (
+                <div className="form-field">
+                  <label htmlFor="identifier">
+                    ایمیل یا نام کاربری
+                    <span aria-hidden="true">*</span>
+                  </label>
+                  <div className={`input-shell ${errors.identifier ? 'input-error' : ''}`}>
+                    <span className="field-icon">
+                      <UserIcon />
+                    </span>
+                    <input
+                      id="identifier"
+                      name="identifier"
+                      type="text"
+                      autoComplete="username"
+                      placeholder="ایمیل یا نام کاربری"
+                      dir="ltr"
+                      aria-invalid={Boolean(errors.identifier)}
+                      aria-describedby={errors.identifier ? 'identifier-error' : undefined}
+                    />
+                  </div>
+                  <FieldError id="identifier-error" message={errors.identifier} />
+                </div>
+              )}
 
               <div className="form-field">
                 <div className="label-row">
@@ -343,40 +368,6 @@ function AuthPage({ mode }) {
                 </div>
                 <FieldError id="password-error" message={errors.password} />
               </div>
-
-              {isSignup && (
-                <div className="form-field">
-                  <label htmlFor="confirmPassword">
-                    تکرار رمز عبور
-                    <span aria-hidden="true">*</span>
-                  </label>
-                  <div className={`input-shell ${errors.confirmPassword ? 'input-error' : ''}`}>
-                    <span className="field-icon">
-                      <LockIcon />
-                    </span>
-                    <input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type={confirmVisible ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      placeholder="رمز عبور را دوباره وارد کنید"
-                      dir="ltr"
-                      aria-invalid={Boolean(errors.confirmPassword)}
-                      aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined}
-                    />
-                    <button
-                      className="visibility-button"
-                      type="button"
-                      onClick={() => setConfirmVisible((current) => !current)}
-                      aria-label={confirmVisible ? 'پنهان کردن تکرار رمز عبور' : 'نمایش تکرار رمز عبور'}
-                      aria-pressed={confirmVisible}
-                    >
-                      <EyeIcon hidden={confirmVisible} />
-                    </button>
-                  </div>
-                  <FieldError id="confirmPassword-error" message={errors.confirmPassword} />
-                </div>
-              )}
 
               {isSignup ? (
                 <div className="terms-field">
