@@ -1,0 +1,8 @@
+CREATE TABLE app_users (
+    id UUID PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(320) NOT NULL UNIQUE,
+    password_hash VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
