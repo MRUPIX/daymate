@@ -421,6 +421,8 @@ export default function App() {
       <Route path="/login" element={<AuthPage key="login" mode="login" />} />
       <Route path="/signup" element={<AuthPage key="signup" mode="signup" />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/tasks" element={<Dashboard page="tasks" />} />
+      <Route path="/calendar" element={<Dashboard page="calendar" />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

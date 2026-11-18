@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import './dashboard.css';
 
 const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
@@ -18,6 +19,8 @@ const INITIAL_TASKS = [
     dueTime: '08:00',
     completed: true,
     overdue: false,
+    schedule: 'today',
+    category: 'work',
   },
   {
     id: 2,
@@ -27,6 +30,8 @@ const INITIAL_TASKS = [
     dueTime: '09:30',
     completed: false,
     overdue: true,
+    schedule: 'today',
+    category: 'work',
   },
   {
     id: 3,
@@ -36,6 +41,8 @@ const INITIAL_TASKS = [
     dueTime: '11:15',
     completed: true,
     overdue: false,
+    schedule: 'today',
+    category: 'work',
   },
   {
     id: 4,
@@ -45,6 +52,8 @@ const INITIAL_TASKS = [
     dueTime: '14:00',
     completed: false,
     overdue: false,
+    schedule: 'today',
+    category: 'work',
   },
   {
     id: 5,
@@ -54,6 +63,8 @@ const INITIAL_TASKS = [
     dueTime: '18:00',
     completed: false,
     overdue: false,
+    schedule: 'today',
+    category: 'personal',
   },
   {
     id: 6,
@@ -63,15 +74,61 @@ const INITIAL_TASKS = [
     dueTime: '19:30',
     completed: false,
     overdue: false,
+    schedule: 'today',
+    category: 'health',
+  },
+  {
+    id: 7,
+    title: 'تکمیل طرح ارائه',
+    description: 'اسلایدهای جمع‌بندی و زمان‌بندی اجرا را آماده کن.',
+    priority: 'high',
+    dueTime: '10:00',
+    completed: false,
+    overdue: false,
+    schedule: 'tomorrow',
+    category: 'work',
+  },
+  {
+    id: 8,
+    title: 'خرید هفتگی خانه',
+    description: 'فهرست خرید را پیش از رفتن به فروشگاه مرور کن.',
+    priority: 'medium',
+    dueTime: '17:30',
+    completed: false,
+    overdue: false,
+    schedule: 'tomorrow',
+    category: 'personal',
+  },
+  {
+    id: 9,
+    title: 'رزرو وقت دندان‌پزشک',
+    description: 'برای معاینه‌ی دوره‌ای یک زمان مناسب پیدا کن.',
+    priority: 'low',
+    dueTime: '12:00',
+    completed: false,
+    overdue: false,
+    schedule: 'week',
+    category: 'health',
+  },
+  {
+    id: 10,
+    title: 'مرتب‌کردن پرونده‌های شخصی',
+    description: 'مدارک قدیمی را دسته‌بندی و بایگانی کن.',
+    priority: 'low',
+    dueTime: '16:00',
+    completed: true,
+    overdue: false,
+    schedule: 'week',
+    category: 'personal',
   },
 ];
 
 const NAV_ITEMS = [
-  { label: 'داشبورد', icon: 'dashboard', href: '#dashboard-overview', active: true },
-  { label: 'کارهای من', icon: 'tasks', href: '#today-tasks' },
-  { label: 'تقویم', icon: 'calendar', href: '#monthly-productivity' },
-  { label: 'آمارها', icon: 'chart', href: '#quick-statistics' },
-  { label: 'تنظیمات', icon: 'settings', href: '#dashboard-profile' },
+  { label: 'داشبورد', icon: 'dashboard', to: '/dashboard', page: 'dashboard' },
+  { label: 'کارهای من', icon: 'tasks', to: '/tasks', page: 'tasks' },
+  { label: 'تقویم', icon: 'calendar', to: '/calendar', page: 'calendar' },
+  { label: 'آمارها', icon: 'chart', to: '/dashboard#quick-statistics' },
+  { label: 'تنظیمات', icon: 'settings', to: '/dashboard#dashboard-profile' },
 ];
 
 const FILTERS = [
@@ -80,6 +137,29 @@ const FILTERS = [
   { value: 'medium', label: 'متوسط' },
   { value: 'low', label: 'کم' },
 ];
+
+const MY_TASK_SCOPES = [
+  { value: 'all', label: 'همه‌ی کارها' },
+  { value: 'today', label: 'امروز' },
+  { value: 'upcoming', label: 'پیش رو' },
+  { value: 'completed', label: 'انجام‌شده' },
+];
+
+const TASK_SCHEDULES = {
+  today: { label: 'امروز', detail: 'تمرکز اصلی روز' },
+  tomorrow: { label: 'فردا', detail: 'آماده برای شروع روز بعد' },
+  week: { label: 'این هفته', detail: 'برای روزهای پیش رو' },
+};
+
+const SCHEDULE_ORDER = ['today', 'tomorrow', 'week'];
+
+const TASK_CATEGORIES = {
+  work: { label: 'کاری', tone: 'green' },
+  personal: { label: 'شخصی', tone: 'coral' },
+  health: { label: 'سلامتی', tone: 'blue' },
+};
+
+const PERSIAN_WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
 
 const PRODUCTIVITY_PATTERN = [0.62, 0.78, 0.55, 0.88, 0.72, 0.92, 0.68, 0.81, 0.74, 0.96];
 
@@ -132,8 +212,80 @@ function getCurrentCalendar(date) {
   return {
     ...current,
     daysInMonth,
+    firstDate: firstDay,
     label: MONTH_FORMATTER.format(date),
   };
+}
+
+function toDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(value) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0, 0);
+}
+
+function getTaskDueDate(task, now) {
+  if (task.dueDate) return parseDateKey(task.dueDate);
+
+  const dueDate = new Date(now);
+  dueDate.setHours(12, 0, 0, 0);
+
+  if (task.schedule === 'tomorrow') {
+    dueDate.setDate(dueDate.getDate() + 1);
+  } else if (task.schedule === 'week') {
+    dueDate.setDate(dueDate.getDate() + 2 + (Number(task.id) % 5));
+  }
+
+  return dueDate;
+}
+
+function getTaskScheduleForDate(date, now) {
+  const today = new Date(now);
+  today.setHours(12, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (toDateKey(date) === toDateKey(today)) return 'today';
+  if (toDateKey(date) === toDateKey(tomorrow)) return 'tomorrow';
+  return 'week';
+}
+
+function createPersianCalendarGrid(date) {
+  const calendar = getCurrentCalendar(date);
+  const startOffset = (calendar.firstDate.getDay() + 1) % 7;
+  const gridStart = new Date(calendar.firstDate);
+  gridStart.setDate(gridStart.getDate() - startOffset);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const cellDate = new Date(gridStart);
+    cellDate.setDate(gridStart.getDate() + index);
+    const parts = getCalendarParts(cellDate);
+
+    return {
+      date: cellDate,
+      key: toDateKey(cellDate),
+      day: parts.day,
+      inCurrentMonth: parts.month === calendar.month && parts.year === calendar.year,
+    };
+  });
+}
+
+function shiftPersianMonth(date, offset) {
+  const calendar = getCurrentCalendar(date);
+  const shifted = new Date(calendar.firstDate);
+
+  if (offset > 0) {
+    shifted.setDate(shifted.getDate() + calendar.daysInMonth);
+    return shifted;
+  }
+
+  shifted.setDate(shifted.getDate() - 1);
+  return getCurrentCalendar(shifted).firstDate;
 }
 
 function createMonthlyData(calendar) {
@@ -234,6 +386,13 @@ const DASHBOARD_ICONS = {
       </>
     ),
     close: <path d="m6 6 12 12M18 6 6 18" />,
+    'chevron-left': <path d="m15 18-6-6 6-6" />,
+    'chevron-right': <path d="m9 18 6-6-6-6" />,
+    trash: (
+      <>
+        <path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6" />
+      </>
+    ),
     'arrow-up': <path d="m12 19V5m-6 6 6-6 6 6" />,
     'arrow-down': <path d="M12 5v14m6-6-6 6-6-6" />,
     minus: <path d="M5 12h14" />,
@@ -279,32 +438,36 @@ function DashboardLogo() {
   );
 }
 
-function Sidebar({ monthlyRate }) {
+function Sidebar({ monthlyRate, activePage }) {
   return (
     <aside className="dashboard-sidebar" aria-label="ناوبری اصلی">
-      <a className="dashboard-brand" href="#dashboard-overview" aria-label="دی‌میت، داشبورد">
+      <Link className="dashboard-brand" to="/dashboard" aria-label="دی‌میت، داشبورد">
         <DashboardLogo />
         <span>
           <strong>دی‌میت</strong>
           <small>همراه روزهای پربار</small>
         </span>
-      </a>
+      </Link>
 
       <nav className="dashboard-nav">
-        {NAV_ITEMS.map((item) => (
-          <a
-            className={item.active ? 'dashboard-nav-item dashboard-nav-item-active' : 'dashboard-nav-item'}
-            href={item.href}
-            key={item.label}
-            aria-current={item.active ? 'page' : undefined}
-          >
-            <span className="dashboard-nav-icon">
-              <DashboardIcon name={item.icon} />
-            </span>
-            <span className="dashboard-nav-label">{item.label}</span>
-            {item.active && <i aria-hidden="true" />}
-          </a>
-        ))}
+        {NAV_ITEMS.map((item) => {
+          const isActive = item.page === activePage;
+
+          return (
+            <Link
+              className={isActive ? 'dashboard-nav-item dashboard-nav-item-active' : 'dashboard-nav-item'}
+              to={item.to}
+              key={item.label}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <span className="dashboard-nav-icon">
+                <DashboardIcon name={item.icon} />
+              </span>
+              <span className="dashboard-nav-label">{item.label}</span>
+              {isActive && <i aria-hidden="true" />}
+            </Link>
+          );
+        })}
       </nav>
 
       <div className="sidebar-insight">
@@ -321,7 +484,7 @@ function Sidebar({ monthlyRate }) {
   );
 }
 
-function TopBar({ searchTerm, onSearch, notificationsOpen, onToggleNotifications }) {
+function TopBar({ searchTerm, onSearch, notificationsOpen, onToggleNotifications, searchPlaceholder }) {
   const searchInputRef = useRef(null);
 
   useEffect(() => {
@@ -347,7 +510,7 @@ function TopBar({ searchTerm, onSearch, notificationsOpen, onToggleNotifications
           type="search"
           value={searchTerm}
           onChange={(event) => onSearch(event.target.value)}
-          placeholder="جست‌وجو در کارهای امروز..."
+          placeholder={searchPlaceholder}
         />
         <kbd>Ctrl K</kbd>
       </div>
@@ -756,7 +919,631 @@ function QuickStatistics({ completed, average, bestDay, overall, monthLabel }) {
   );
 }
 
-function AddTaskModal({ onClose, onAdd }) {
+function MyTaskSummaryCard({ label, value, detail, icon, tone }) {
+  return (
+    <article className={`my-task-summary-card my-task-summary-${tone}`}>
+      <span className="my-task-summary-icon">
+        <DashboardIcon name={icon} />
+      </span>
+      <div>
+        <span>{label}</span>
+        <strong>{toPersianDigits(value)}</strong>
+        <small>{detail}</small>
+      </div>
+    </article>
+  );
+}
+
+function MyTaskItem({ task, onToggle, onDelete }) {
+  const priority = PRIORITIES[task.priority];
+  const category = TASK_CATEGORIES[task.category] ?? TASK_CATEGORIES.work;
+  const isOverdue = task.overdue && !task.completed;
+
+  return (
+    <li className={`my-task-item ${task.completed ? 'my-task-item-completed' : ''}`}>
+      <label className="dashboard-task-checkbox">
+        <input
+          type="checkbox"
+          checked={task.completed}
+          onChange={() => onToggle(task.id)}
+          aria-label={`${task.completed ? 'بازگرداندن' : 'انجام'} کار ${task.title}`}
+        />
+        <span aria-hidden="true">
+          <DashboardIcon name="check" />
+        </span>
+      </label>
+
+      <div className="my-task-copy">
+        <strong>{task.title}</strong>
+        {task.description && <p>{task.description}</p>}
+        <div className="my-task-mobile-meta">
+          <span className={`my-task-category my-task-category-${category.tone}`}>
+            <i />
+            {category.label}
+          </span>
+          <span className={`priority-badge priority-${task.priority}`}>
+            <DashboardIcon name={priority.icon} />
+            {priority.label}
+          </span>
+          {isOverdue && <span className="overdue-badge">عقب‌افتاده</span>}
+        </div>
+      </div>
+
+      <div className="my-task-meta">
+        <span className={`my-task-category my-task-category-${category.tone}`}>
+          <i />
+          {category.label}
+        </span>
+        <span className={`priority-badge priority-${task.priority}`}>
+          <DashboardIcon name={priority.icon} />
+          {priority.label}
+        </span>
+        {isOverdue && <span className="overdue-badge">عقب‌افتاده</span>}
+        <time dateTime={task.dueTime}>
+          <DashboardIcon name="clock" />
+          {toPersianDigits(task.dueTime)}
+        </time>
+      </div>
+
+      <button
+        className="my-task-delete-button"
+        type="button"
+        aria-label={`حذف کار ${task.title}`}
+        onClick={() => onDelete(task.id)}
+      >
+        <DashboardIcon name="trash" />
+      </button>
+    </li>
+  );
+}
+
+function MyTasksView({
+  tasks,
+  visibleTasks,
+  scope,
+  onScope,
+  priorityFilter,
+  onPriorityFilter,
+  categoryFilter,
+  onCategoryFilter,
+  onToggle,
+  onDelete,
+  onAddTask,
+  searchTerm,
+  now,
+}) {
+  const completedTasks = tasks.filter((task) => task.completed).length;
+  const pendingToday = tasks.filter((task) => task.schedule === 'today' && !task.completed).length;
+  const overdueTasks = tasks.filter((task) => task.overdue && !task.completed).length;
+  const pendingTasks = tasks.length - completedTasks;
+  const completionPercentage = tasks.length === 0
+    ? 0
+    : Math.round((completedTasks / tasks.length) * 100);
+  const nextTask = tasks.find((task) => task.overdue && !task.completed)
+    ?? tasks.find((task) => task.priority === 'high' && !task.completed)
+    ?? tasks.find((task) => !task.completed);
+
+  function getScopeCount(value) {
+    if (value === 'today') return tasks.filter((task) => task.schedule === 'today').length;
+    if (value === 'upcoming') return tasks.filter((task) => task.schedule !== 'today' && !task.completed).length;
+    if (value === 'completed') return completedTasks;
+    return tasks.length;
+  }
+
+  return (
+    <div className="dashboard-content my-tasks-content">
+      <header className="my-tasks-heading">
+        <div>
+          <span className="welcome-overline">
+            <i /> همه‌چیز زیر نظر شماست
+          </span>
+          <h1>کارهای من</h1>
+          <p>کارهای امروز و روزهای آینده را یک‌جا ببینید، مرتب کنید و جلو ببرید.</p>
+        </div>
+        <div className="my-tasks-heading-actions">
+          <time dateTime={now.toISOString().slice(0, 10)}>
+            <DashboardIcon name="calendar" />
+            <span>
+              <small>امروز</small>
+              <strong>{FULL_DATE_FORMATTER.format(now)}</strong>
+            </span>
+          </time>
+          <button className="my-tasks-add-button" type="button" onClick={onAddTask}>
+            <DashboardIcon name="plus" />
+            افزودن کار جدید
+          </button>
+        </div>
+      </header>
+
+      <section className="my-tasks-summary" aria-label="خلاصه‌ی کارها">
+        <MyTaskSummaryCard
+          label="همه‌ی کارها"
+          value={tasks.length}
+          detail="در فهرست‌های شما"
+          icon="stack"
+          tone="total"
+        />
+        <MyTaskSummaryCard
+          label="باقی‌مانده‌ی امروز"
+          value={pendingToday}
+          detail="برای تکمیل برنامه‌ی روز"
+          icon="clock"
+          tone="today"
+        />
+        <MyTaskSummaryCard
+          label="انجام‌شده"
+          value={completedTasks}
+          detail={`${toPersianDigits(completionPercentage)}٪ از همه‌ی کارها`}
+          icon="check"
+          tone="done"
+        />
+        <MyTaskSummaryCard
+          label="عقب‌افتاده"
+          value={overdueTasks}
+          detail={overdueTasks ? 'به توجه شما نیاز دارد' : 'همه‌چیز مرتب است'}
+          icon="alert"
+          tone="late"
+        />
+      </section>
+
+      <div className="my-tasks-layout">
+        <section className="dashboard-card my-tasks-list-card" aria-labelledby="my-tasks-list-title">
+          <div className="my-tasks-list-heading">
+            <div>
+              <span className="section-kicker">فضای انجام کار</span>
+              <h2 id="my-tasks-list-title">فهرست کارها</h2>
+            </div>
+            <span className="my-tasks-result-count">
+              {toPersianDigits(visibleTasks.length)} نتیجه
+            </span>
+          </div>
+
+          <div className="my-tasks-toolbar">
+            <div className="my-task-scope-tabs" aria-label="فیلتر زمانی کارها">
+              {MY_TASK_SCOPES.map((item) => (
+                <button
+                  className={scope === item.value ? 'my-task-scope-active' : ''}
+                  type="button"
+                  key={item.value}
+                  aria-label={`نمایش ${item.label}`}
+                  aria-pressed={scope === item.value}
+                  onClick={() => onScope(item.value)}
+                >
+                  <span>{item.label}</span>
+                  <b>{toPersianDigits(getScopeCount(item.value))}</b>
+                </button>
+              ))}
+            </div>
+
+            <label className="my-task-priority-select">
+              <span>اولویت</span>
+              <select
+                value={priorityFilter}
+                onChange={(event) => onPriorityFilter(event.target.value)}
+                aria-label="فیلتر اولویت کارها"
+              >
+                {FILTERS.map((item) => (
+                  <option value={item.value} key={item.value}>{item.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {visibleTasks.length > 0 ? (
+            <div className="my-task-groups">
+              {SCHEDULE_ORDER.map((schedule) => {
+                const scheduledTasks = visibleTasks.filter((task) => task.schedule === schedule);
+                if (scheduledTasks.length === 0) return null;
+
+                const scheduleCopy = TASK_SCHEDULES[schedule];
+                return (
+                  <section className="my-task-group" key={schedule} aria-labelledby={`task-group-${schedule}`}>
+                    <header>
+                      <div>
+                        <h3 id={`task-group-${schedule}`}>{scheduleCopy.label}</h3>
+                        <span>{scheduleCopy.detail}</span>
+                      </div>
+                      <b>{toPersianDigits(scheduledTasks.length)} کار</b>
+                    </header>
+                    <ul>
+                      {scheduledTasks.map((task) => (
+                        <MyTaskItem
+                          task={task}
+                          onToggle={onToggle}
+                          onDelete={onDelete}
+                          key={task.id}
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="tasks-empty-state my-tasks-empty-state">
+              <span><DashboardIcon name={searchTerm ? 'search' : 'check'} /></span>
+              <strong>{searchTerm ? 'کاری با این عبارت پیدا نشد' : 'این بخش خالی است'}</strong>
+              <p>فیلترها را تغییر دهید یا یک کار تازه به برنامه اضافه کنید.</p>
+              <button type="button" onClick={onAddTask}>
+                <DashboardIcon name="plus" />
+                افزودن کار
+              </button>
+            </div>
+          )}
+        </section>
+
+        <aside className="my-tasks-aside" aria-label="خلاصه و دسته‌بندی کارها">
+          <section className="dashboard-card task-focus-card" aria-labelledby="task-focus-title">
+            <div className="task-focus-heading">
+              <div>
+                <span className="section-kicker">ریتم این هفته</span>
+                <h2 id="task-focus-title">پیشرفت کلی</h2>
+              </div>
+              <span
+                className="task-focus-ring"
+                style={{ '--task-completion': `${completionPercentage * 3.6}deg` }}
+                aria-label={`${completionPercentage} درصد تکمیل شده`}
+              >
+                {toPersianDigits(completionPercentage)}٪
+              </span>
+            </div>
+
+            <div className="task-focus-progress">
+              <span style={{ width: `${completionPercentage}%` }} />
+            </div>
+            <p className="task-focus-copy">
+              <strong>{toPersianDigits(completedTasks)}</strong> کار انجام شده و{' '}
+              <strong>{toPersianDigits(pendingTasks)}</strong> کار دیگر باقی مانده است.
+            </p>
+
+            {nextTask && (
+              <div className="task-focus-next">
+                <span><DashboardIcon name="target" /></span>
+                <p>
+                  <small>پیشنهاد برای تمرکز بعدی</small>
+                  <strong>{nextTask.title}</strong>
+                </p>
+                <time dateTime={nextTask.dueTime}>{toPersianDigits(nextTask.dueTime)}</time>
+              </div>
+            )}
+          </section>
+
+          <section className="dashboard-card task-categories-card" aria-labelledby="task-categories-title">
+            <div className="task-categories-heading">
+              <div>
+                <span className="section-kicker">مرتب‌سازی سریع</span>
+                <h2 id="task-categories-title">فهرست‌ها</h2>
+              </div>
+              <span>{toPersianDigits(tasks.length)} کار</span>
+            </div>
+
+            <div className="task-category-filters">
+              <button
+                className={categoryFilter === 'all' ? 'task-category-filter-active' : ''}
+                type="button"
+                aria-pressed={categoryFilter === 'all'}
+                onClick={() => onCategoryFilter('all')}
+              >
+                <span className="task-category-filter-symbol task-category-filter-all">
+                  <DashboardIcon name="stack" />
+                </span>
+                <strong>همه‌ی فهرست‌ها</strong>
+                <b>{toPersianDigits(tasks.length)}</b>
+              </button>
+              {Object.entries(TASK_CATEGORIES).map(([value, category]) => (
+                <button
+                  className={categoryFilter === value ? 'task-category-filter-active' : ''}
+                  type="button"
+                  key={value}
+                  aria-pressed={categoryFilter === value}
+                  onClick={() => onCategoryFilter(value)}
+                >
+                  <span className={`task-category-filter-symbol task-category-filter-${category.tone}`}>
+                    <i />
+                  </span>
+                  <strong>{category.label}</strong>
+                  <b>{toPersianDigits(tasks.filter((task) => task.category === value).length)}</b>
+                </button>
+              ))}
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function CalendarAgendaTask({ task, onToggle }) {
+  const category = TASK_CATEGORIES[task.category] ?? TASK_CATEGORIES.work;
+
+  return (
+    <li className={task.completed ? 'calendar-agenda-task calendar-agenda-task-completed' : 'calendar-agenda-task'}>
+      <label className="dashboard-task-checkbox">
+        <input
+          type="checkbox"
+          checked={task.completed}
+          onChange={() => onToggle(task.id)}
+          aria-label={`${task.completed ? 'بازگرداندن' : 'انجام'} کار ${task.title}`}
+        />
+        <span aria-hidden="true">
+          <DashboardIcon name="check" />
+        </span>
+      </label>
+      <div>
+        <strong>{task.title}</strong>
+        <small className={`calendar-agenda-category calendar-agenda-category-${category.tone}`}>
+          <i /> {category.label}
+        </small>
+      </div>
+      <time dateTime={task.dueTime}>{toPersianDigits(task.dueTime)}</time>
+    </li>
+  );
+}
+
+function CalendarView({
+  tasks,
+  searchTerm,
+  now,
+  calendarDate,
+  selectedDate,
+  onCalendarDateChange,
+  onSelectDate,
+  onToggle,
+  onAddTask,
+}) {
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const calendar = getCurrentCalendar(calendarDate);
+  const calendarGrid = createPersianCalendarGrid(calendarDate);
+  const selectedKey = toDateKey(selectedDate);
+  const todayKey = toDateKey(now);
+  const normalizedSearch = searchTerm.trim().toLocaleLowerCase('fa');
+  const taskEntries = tasks.map((task) => {
+    const taskDate = getTaskDueDate(task, now);
+    return { ...task, taskDate, dateKey: toDateKey(taskDate) };
+  });
+  const visibleTaskEntries = taskEntries.filter((task) => {
+    const matchesCategory = categoryFilter === 'all' || task.category === categoryFilter;
+    const matchesSearch = !normalizedSearch
+      || `${task.title} ${task.description ?? ''}`.toLocaleLowerCase('fa').includes(normalizedSearch);
+    return matchesCategory && matchesSearch;
+  });
+  const monthTasks = taskEntries.filter((task) => {
+    const parts = getCalendarParts(task.taskDate);
+    return parts.year === calendar.year && parts.month === calendar.month;
+  });
+  const selectedTasks = visibleTaskEntries.filter((task) => task.dateKey === selectedKey);
+  const completedMonthTasks = monthTasks.filter((task) => task.completed).length;
+  const monthCompletion = monthTasks.length === 0
+    ? 0
+    : Math.round((completedMonthTasks / monthTasks.length) * 100);
+  const taskCountsByDate = monthTasks.reduce((counts, task) => ({
+    ...counts,
+    [task.dateKey]: (counts[task.dateKey] ?? 0) + 1,
+  }), {});
+  const busiestDateEntry = Object.entries(taskCountsByDate)
+    .sort((first, second) => second[1] - first[1])[0];
+  const busiestDay = busiestDateEntry
+    ? getCalendarParts(parseDateKey(busiestDateEntry[0])).day
+    : null;
+
+  function changeMonth(offset) {
+    const nextMonth = shiftPersianMonth(calendarDate, offset);
+    onCalendarDateChange(nextMonth);
+    onSelectDate(nextMonth);
+  }
+
+  function showToday() {
+    const today = new Date();
+    onCalendarDateChange(today);
+    onSelectDate(today);
+  }
+
+  function selectCalendarDay(cell) {
+    onSelectDate(cell.date);
+    if (!cell.inCurrentMonth) onCalendarDateChange(cell.date);
+  }
+
+  return (
+    <div className="dashboard-content calendar-content">
+      <header className="calendar-page-heading">
+        <div>
+          <span className="welcome-overline">
+            <i /> تصویر روشن‌تری از روزهای پیش رو
+          </span>
+          <h1>تقویم</h1>
+          <p>برنامه‌ی ماه را مرور کنید و برای هر روز، کارهای مهم را کنار هم بچینید.</p>
+        </div>
+        <button className="calendar-add-button" type="button" onClick={onAddTask}>
+          <DashboardIcon name="plus" />
+          افزودن کار در این روز
+        </button>
+      </header>
+
+      <section className="calendar-glance" aria-label="خلاصه‌ی تقویم">
+        <article className="calendar-date-highlight">
+          <span>روز انتخاب‌شده</span>
+          <strong>{toPersianDigits(getCalendarParts(selectedDate).day)}</strong>
+          <p>{FULL_DATE_FORMATTER.format(selectedDate)}</p>
+          <i aria-hidden="true"><DashboardIcon name="calendar" /></i>
+        </article>
+        <article className="calendar-glance-card calendar-glance-coral">
+          <span><DashboardIcon name="stack" /></span>
+          <div>
+            <small>کارهای این ماه</small>
+            <strong>{toPersianDigits(monthTasks.length)}</strong>
+            <p>{toPersianDigits(monthTasks.length - completedMonthTasks)} کار باقی مانده</p>
+          </div>
+        </article>
+        <article className="calendar-glance-card calendar-glance-lime">
+          <span><DashboardIcon name="check" /></span>
+          <div>
+            <small>انجام‌شده</small>
+            <strong>{toPersianDigits(completedMonthTasks)}</strong>
+            <p>{toPersianDigits(monthCompletion)}٪ تکمیل برنامه</p>
+          </div>
+        </article>
+        <article className="calendar-glance-card calendar-glance-gold">
+          <span><DashboardIcon name="spark" /></span>
+          <div>
+            <small>شلوغ‌ترین روز</small>
+            <strong>{busiestDay ? toPersianDigits(busiestDay) : 'ـ'}</strong>
+            <p>{busiestDateEntry ? `${toPersianDigits(busiestDateEntry[1])} کار برنامه‌ریزی‌شده` : 'هنوز کاری ثبت نشده'}</p>
+          </div>
+        </article>
+      </section>
+
+      <div className="calendar-layout">
+        <section className="dashboard-card calendar-month-card" aria-labelledby="calendar-month-title">
+          <header className="calendar-month-header">
+            <div className="calendar-month-title-wrap">
+              <span className="section-kicker">نمای ماهانه</span>
+              <h2 id="calendar-month-title">{calendar.label}</h2>
+            </div>
+            <div className="calendar-month-actions">
+              <button type="button" className="calendar-today-button" onClick={showToday}>امروز</button>
+              <div className="calendar-month-navigation">
+                <button type="button" aria-label="ماه قبل" onClick={() => changeMonth(-1)}>
+                  <DashboardIcon name="chevron-right" />
+                </button>
+                <button type="button" aria-label="ماه بعد" onClick={() => changeMonth(1)}>
+                  <DashboardIcon name="chevron-left" />
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <div className="calendar-category-filters" aria-label="فیلتر تقویم بر اساس فهرست">
+            <button
+              className={categoryFilter === 'all' ? 'calendar-category-active' : ''}
+              type="button"
+              aria-pressed={categoryFilter === 'all'}
+              onClick={() => setCategoryFilter('all')}
+            >
+              <i className="calendar-category-all" /> همه
+            </button>
+            {Object.entries(TASK_CATEGORIES).map(([value, category]) => (
+              <button
+                className={categoryFilter === value ? 'calendar-category-active' : ''}
+                type="button"
+                key={value}
+                aria-pressed={categoryFilter === value}
+                onClick={() => setCategoryFilter(value)}
+              >
+                <i className={`calendar-category-${category.tone}`} /> {category.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="calendar-grid-scroll">
+            <div className="calendar-weekdays" aria-hidden="true">
+              {PERSIAN_WEEKDAYS.map((weekday) => <span key={weekday}>{weekday}</span>)}
+            </div>
+            <div className="calendar-month-grid" aria-label={`تقویم ${calendar.label}`}>
+              {calendarGrid.map((cell) => {
+                const dayTasks = visibleTaskEntries.filter((task) => task.dateKey === cell.key);
+                const isSelected = cell.key === selectedKey;
+                const isToday = cell.key === todayKey;
+                const cellClasses = [
+                  'calendar-day',
+                  !cell.inCurrentMonth ? 'calendar-day-outside' : '',
+                  isSelected ? 'calendar-day-selected' : '',
+                  isToday ? 'calendar-day-today' : '',
+                ].filter(Boolean).join(' ');
+
+                return (
+                  <button
+                    className={cellClasses}
+                    type="button"
+                    key={cell.key}
+                    aria-label={`${FULL_DATE_FORMATTER.format(cell.date)}، ${dayTasks.length} کار`}
+                    aria-pressed={isSelected}
+                    onClick={() => selectCalendarDay(cell)}
+                  >
+                    <span className="calendar-day-number">{toPersianDigits(cell.day)}</span>
+                    <span className="calendar-day-tasks">
+                      {dayTasks.slice(0, 2).map((task) => {
+                        const category = TASK_CATEGORIES[task.category] ?? TASK_CATEGORIES.work;
+                        return (
+                          <span
+                            className={`calendar-task-pill calendar-task-${category.tone} ${task.completed ? 'calendar-task-completed' : ''}`}
+                            key={task.id}
+                          >
+                            <i />
+                            <em>{task.title}</em>
+                          </span>
+                        );
+                      })}
+                      {dayTasks.length > 2 && (
+                        <span className="calendar-more-tasks">+{toPersianDigits(dayTasks.length - 2)} کار</span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <aside className="calendar-aside" aria-label="برنامه و وضعیت ماه">
+          <section className="dashboard-card calendar-agenda-card" aria-label="برنامه‌ی روز انتخاب‌شده">
+            <header>
+              <div>
+                <span className="section-kicker">برنامه‌ی روز</span>
+                <h2>{FULL_DATE_FORMATTER.format(selectedDate)}</h2>
+              </div>
+              <b>{toPersianDigits(selectedTasks.length)} کار</b>
+            </header>
+
+            {selectedTasks.length > 0 ? (
+              <ul className="calendar-agenda-list">
+                {selectedTasks.map((task) => (
+                  <CalendarAgendaTask task={task} onToggle={onToggle} key={task.id} />
+                ))}
+              </ul>
+            ) : (
+              <div className="calendar-agenda-empty">
+                <span><DashboardIcon name="calendar" /></span>
+                <strong>{searchTerm ? 'کاری با این جست‌وجو پیدا نشد' : 'این روز هنوز خلوت است'}</strong>
+                <p>یک کار تازه اضافه کنید و برنامه‌ی این روز را بسازید.</p>
+              </div>
+            )}
+
+            <button className="calendar-agenda-add" type="button" onClick={onAddTask}>
+              <DashboardIcon name="plus" />
+              افزودن کار برای این روز
+            </button>
+          </section>
+
+          <section className="dashboard-card calendar-month-progress" aria-labelledby="calendar-progress-title">
+            <div className="calendar-progress-heading">
+              <div>
+                <span className="section-kicker">نبض ماه</span>
+                <h2 id="calendar-progress-title">وضعیت برنامه</h2>
+              </div>
+              <strong>{toPersianDigits(monthCompletion)}٪</strong>
+            </div>
+            <div className="calendar-progress-track">
+              <span style={{ width: `${monthCompletion}%` }} />
+            </div>
+            <div className="calendar-progress-stats">
+              <p><i className="calendar-progress-done" /><span>انجام‌شده</span><b>{toPersianDigits(completedMonthTasks)}</b></p>
+              <p><i className="calendar-progress-pending" /><span>در انتظار</span><b>{toPersianDigits(monthTasks.length - completedMonthTasks)}</b></p>
+            </div>
+            <div className="calendar-progress-note">
+              <DashboardIcon name="spark" />
+              <p>
+                {monthCompletion >= 60 ? 'ریتم خوبی ساخته‌اید.' : 'با یک کار کوچک شروع کنید.'}
+                <small>{monthCompletion >= 60 ? 'همین روند را تا پایان ماه ادامه دهید.' : 'هر علامت تیک، مسیر ماه را روشن‌تر می‌کند.'}</small>
+              </p>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function AddTaskModal({ onClose, onAdd, allTasks = false, calendarDate = null }) {
   const [titleError, setTitleError] = useState('');
   const [dueTimeError, setDueTimeError] = useState('');
 
@@ -779,7 +1566,11 @@ function AddTaskModal({ onClose, onAdd }) {
 
     const [hours, minutes] = values.dueTime.split(':').map(Number);
     const now = new Date();
-    const overdue = hours * 60 + minutes < now.getHours() * 60 + now.getMinutes();
+    const schedule = calendarDate
+      ? getTaskScheduleForDate(calendarDate, now)
+      : allTasks ? values.schedule : 'today';
+    const overdue = (calendarDate && toDateKey(calendarDate) < toDateKey(now))
+      || (schedule === 'today' && hours * 60 + minutes < now.getHours() * 60 + now.getMinutes());
 
     onAdd({
       id: Date.now(),
@@ -789,6 +1580,9 @@ function AddTaskModal({ onClose, onAdd }) {
       dueTime: values.dueTime,
       completed: false,
       overdue,
+      schedule,
+      category: allTasks ? values.category : 'work',
+      dueDate: calendarDate ? toDateKey(calendarDate) : undefined,
     });
   }
 
@@ -872,11 +1666,44 @@ function AddTaskModal({ onClose, onAdd }) {
             </div>
           </div>
 
+          {allTasks && (
+            <div className="modal-fields-row modal-planning-row">
+              <div>
+                {calendarDate ? (
+                  <>
+                    <span className="modal-static-label">تاریخ انجام</span>
+                    <div className="modal-selected-date">
+                      <DashboardIcon name="calendar" />
+                      {FULL_DATE_FORMATTER.format(calendarDate)}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <label htmlFor="new-task-schedule">زمان‌بندی</label>
+                    <select id="new-task-schedule" name="schedule" defaultValue="today">
+                      <option value="today">امروز</option>
+                      <option value="tomorrow">فردا</option>
+                      <option value="week">این هفته</option>
+                    </select>
+                  </>
+                )}
+              </div>
+              <div>
+                <label htmlFor="new-task-category">فهرست</label>
+                <select id="new-task-category" name="category" defaultValue="work">
+                  <option value="work">کاری</option>
+                  <option value="personal">شخصی</option>
+                  <option value="health">سلامتی</option>
+                </select>
+              </div>
+            </div>
+          )}
+
           <div className="task-modal-actions">
             <button className="modal-cancel-button" type="button" onClick={onClose}>انصراف</button>
             <button className="modal-submit-button" type="submit">
               <DashboardIcon name="plus" />
-              افزودن به امروز
+              {calendarDate ? 'افزودن به این روز' : allTasks ? 'افزودن کار' : 'افزودن به امروز'}
             </button>
           </div>
         </form>
@@ -885,27 +1712,46 @@ function AddTaskModal({ onClose, onAdd }) {
   );
 }
 
-export default function Dashboard() {
+export default function Dashboard({ page = 'dashboard' }) {
   const now = new Date();
+  const isTasksPage = page === 'tasks';
+  const isCalendarPage = page === 'calendar';
   const calendar = getCurrentCalendar(now);
   const initialMonthlyData = createMonthlyData(calendar);
   const [tasks, setTasks] = useState(INITIAL_TASKS);
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [myTaskScope, setMyTaskScope] = useState('all');
+  const [myTaskPriorityFilter, setMyTaskPriorityFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [visibleCalendarDate, setVisibleCalendarDate] = useState(() => new Date());
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(() => new Date());
 
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((task) => task.completed).length;
+  const todayTasks = tasks.filter((task) => task.schedule === 'today');
+  const totalTasks = todayTasks.length;
+  const completedTasks = todayTasks.filter((task) => task.completed).length;
   const pendingTasks = totalTasks - completedTasks;
-  const overdueTasks = tasks.filter((task) => task.overdue && !task.completed).length;
+  const overdueTasks = todayTasks.filter((task) => task.overdue && !task.completed).length;
   const dailyPercentage = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
   const normalizedSearch = searchTerm.trim().toLocaleLowerCase('fa');
-  const visibleTasks = tasks.filter((task) => {
+  const visibleTasks = todayTasks.filter((task) => {
     const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
     const matchesSearch = !normalizedSearch
-      || `${task.title} ${task.description}`.toLocaleLowerCase('fa').includes(normalizedSearch);
+      || `${task.title} ${task.description ?? ''}`.toLocaleLowerCase('fa').includes(normalizedSearch);
     return matchesPriority && matchesSearch;
+  });
+  const visibleMyTasks = tasks.filter((task) => {
+    const matchesScope = myTaskScope === 'all'
+      || (myTaskScope === 'today' && task.schedule === 'today')
+      || (myTaskScope === 'upcoming' && task.schedule !== 'today' && !task.completed)
+      || (myTaskScope === 'completed' && task.completed);
+    const matchesPriority = myTaskPriorityFilter === 'all' || task.priority === myTaskPriorityFilter;
+    const matchesCategory = categoryFilter === 'all' || task.category === categoryFilter;
+    const matchesSearch = !normalizedSearch
+      || `${task.title} ${task.description ?? ''}`.toLocaleLowerCase('fa').includes(normalizedSearch);
+    return matchesScope && matchesPriority && matchesCategory && matchesSearch;
   });
 
   const monthlyData = initialMonthlyData.map((item) => (
@@ -940,13 +1786,20 @@ export default function Dashboard() {
   function addTask(task) {
     setTasks((current) => [...current, task]);
     setPriorityFilter('all');
+    setMyTaskScope('all');
+    setMyTaskPriorityFilter('all');
+    setCategoryFilter('all');
     setSearchTerm('');
     setAddTaskOpen(false);
   }
 
+  function deleteTask(taskId) {
+    setTasks((current) => current.filter((task) => task.id !== taskId));
+  }
+
   return (
     <div className="dashboard-page" dir="rtl">
-      <Sidebar monthlyRate={overallCompletion} />
+      <Sidebar monthlyRate={overallCompletion} activePage={page} />
 
       <main className="dashboard-workspace">
         <TopBar
@@ -954,9 +1807,41 @@ export default function Dashboard() {
           onSearch={setSearchTerm}
           notificationsOpen={notificationsOpen}
           onToggleNotifications={() => setNotificationsOpen((current) => !current)}
+          searchPlaceholder={isCalendarPage
+            ? 'جست‌وجو در کارهای تقویم...'
+            : isTasksPage ? 'جست‌وجو در همه‌ی کارها...' : 'جست‌وجو در کارهای امروز...'}
         />
 
-        <div className="dashboard-content">
+        {isTasksPage ? (
+          <MyTasksView
+            tasks={tasks}
+            visibleTasks={visibleMyTasks}
+            scope={myTaskScope}
+            onScope={setMyTaskScope}
+            priorityFilter={myTaskPriorityFilter}
+            onPriorityFilter={setMyTaskPriorityFilter}
+            categoryFilter={categoryFilter}
+            onCategoryFilter={setCategoryFilter}
+            onToggle={toggleTask}
+            onDelete={deleteTask}
+            onAddTask={() => setAddTaskOpen(true)}
+            searchTerm={searchTerm}
+            now={now}
+          />
+        ) : isCalendarPage ? (
+          <CalendarView
+            tasks={tasks}
+            searchTerm={searchTerm}
+            now={now}
+            calendarDate={visibleCalendarDate}
+            selectedDate={selectedCalendarDate}
+            onCalendarDateChange={setVisibleCalendarDate}
+            onSelectDate={setSelectedCalendarDate}
+            onToggle={toggleTask}
+            onAddTask={() => setAddTaskOpen(true)}
+          />
+        ) : (
+          <div className="dashboard-content">
           <header className="dashboard-welcome" id="dashboard-overview">
             <div>
               <span className="welcome-overline">
@@ -1044,10 +1929,18 @@ export default function Dashboard() {
               monthLabel={calendar.label}
             />
           </div>
-        </div>
+          </div>
+        )}
       </main>
 
-      {addTaskOpen && <AddTaskModal onClose={() => setAddTaskOpen(false)} onAdd={addTask} />}
+      {addTaskOpen && (
+        <AddTaskModal
+          onClose={() => setAddTaskOpen(false)}
+          onAdd={addTask}
+          allTasks={isTasksPage || isCalendarPage}
+          calendarDate={isCalendarPage ? selectedCalendarDate : null}
+        />
+      )}
     </div>
   );
 }
