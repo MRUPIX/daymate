@@ -137,4 +137,21 @@ describe('task management dashboard', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(within(agenda).getByText('مرور برنامه‌ی ماه')).toBeInTheDocument();
   });
+
+  it('opens the statistics page and switches reporting periods', async () => {
+    const user = userEvent.setup();
+    renderDashboard();
+
+    await user.click(screen.getByRole('link', { name: 'آمارها' }));
+
+    expect(screen.getByRole('heading', { level: 1, name: 'آمارها' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'آمارها' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('img', { name: /نمودار روند تکمیل کارها/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'این ماه' })).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(screen.getByRole('button', { name: 'امسال' }));
+
+    expect(screen.getByRole('button', { name: 'امسال' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('img', { name: /در امسال/ })).toBeInTheDocument();
+  });
 });

@@ -423,6 +423,7 @@ export default function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/tasks" element={<Dashboard page="tasks" />} />
       <Route path="/calendar" element={<Dashboard page="calendar" />} />
+      <Route path="/statistics" element={<Dashboard page="statistics" />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
