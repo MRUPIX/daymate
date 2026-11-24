@@ -127,7 +127,7 @@ const NAV_ITEMS = [
   { label: 'داشبورد', icon: 'dashboard', to: '/dashboard', page: 'dashboard' },
   { label: 'کارهای من', icon: 'tasks', to: '/tasks', page: 'tasks' },
   { label: 'تقویم', icon: 'calendar', to: '/calendar', page: 'calendar' },
-  { label: 'آمارها', icon: 'chart', to: '/dashboard#quick-statistics' },
+  { label: 'آمارها', icon: 'chart', to: '/statistics', page: 'statistics' },
   { label: 'تنظیمات', icon: 'settings', to: '/dashboard#dashboard-profile' },
 ];
 
@@ -162,6 +162,74 @@ const TASK_CATEGORIES = {
 const PERSIAN_WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
 
 const PRODUCTIVITY_PATTERN = [0.62, 0.78, 0.55, 0.88, 0.72, 0.92, 0.68, 0.81, 0.74, 0.96];
+
+const STATISTICS_PERIODS = [
+  { value: 'week', label: '۷ روز گذشته' },
+  { value: 'month', label: 'این ماه' },
+  { value: 'year', label: 'امسال' },
+];
+
+const STATISTICS_DATA = {
+  week: {
+    periodLabel: '۷ روز گذشته',
+    previousRate: 72,
+    activeDays: 7,
+    activeDetail: 'از ۷ روز گذشته',
+    streak: 5,
+    completedChange: 8,
+    points: [
+      { label: 'ش', accessibleLabel: 'شنبه', completed: 5, total: 6 },
+      { label: 'ی', accessibleLabel: 'یکشنبه', completed: 6, total: 8 },
+      { label: 'د', accessibleLabel: 'دوشنبه', completed: 4, total: 7 },
+      { label: 'س', accessibleLabel: 'سه‌شنبه', completed: 7, total: 8 },
+      { label: 'چ', accessibleLabel: 'چهارشنبه', completed: 6, total: 8 },
+      { label: 'پ', accessibleLabel: 'پنجشنبه', completed: 9, total: 10 },
+      { label: 'ج', accessibleLabel: 'جمعه', completed: 6, total: 7 },
+    ],
+  },
+  month: {
+    periodLabel: 'این ماه',
+    previousRate: 74,
+    activeDays: 24,
+    activeDetail: 'از ۲۸ روز سپری‌شده',
+    streak: 9,
+    completedChange: 23,
+    points: [
+      { label: '۱', accessibleLabel: 'روز ۱', completed: 16, total: 24 },
+      { label: '۴', accessibleLabel: 'روز ۴', completed: 19, total: 25 },
+      { label: '۷', accessibleLabel: 'روز ۷', completed: 18, total: 24 },
+      { label: '۱۰', accessibleLabel: 'روز ۱۰', completed: 22, total: 25 },
+      { label: '۱۳', accessibleLabel: 'روز ۱۳', completed: 20, total: 27 },
+      { label: '۱۶', accessibleLabel: 'روز ۱۶', completed: 24, total: 28 },
+      { label: '۱۹', accessibleLabel: 'روز ۱۹', completed: 21, total: 26 },
+      { label: '۲۲', accessibleLabel: 'روز ۲۲', completed: 25, total: 27 },
+      { label: '۲۵', accessibleLabel: 'روز ۲۵', completed: 23, total: 29 },
+      { label: '۲۸', accessibleLabel: 'روز ۲۸', completed: 27, total: 30 },
+    ],
+  },
+  year: {
+    periodLabel: 'امسال',
+    previousRate: 78,
+    activeDays: 286,
+    activeDetail: 'روز همراه با فعالیت',
+    streak: 24,
+    completedChange: 146,
+    points: [
+      { label: 'فرو', accessibleLabel: 'فروردین', completed: 102, total: 145 },
+      { label: 'ارد', accessibleLabel: 'اردیبهشت', completed: 112, total: 148 },
+      { label: 'خرد', accessibleLabel: 'خرداد', completed: 118, total: 150 },
+      { label: 'تیر', accessibleLabel: 'تیر', completed: 125, total: 154 },
+      { label: 'مرد', accessibleLabel: 'مرداد', completed: 121, total: 147 },
+      { label: 'شهر', accessibleLabel: 'شهریور', completed: 132, total: 155 },
+      { label: 'مهر', accessibleLabel: 'مهر', completed: 128, total: 152 },
+      { label: 'آبا', accessibleLabel: 'آبان', completed: 139, total: 158 },
+      { label: 'آذر', accessibleLabel: 'آذر', completed: 133, total: 154 },
+      { label: 'دی', accessibleLabel: 'دی', completed: 143, total: 160 },
+      { label: 'بهم', accessibleLabel: 'بهمن', completed: 140, total: 156 },
+      { label: 'اسف', accessibleLabel: 'اسفند', completed: 147, total: 162 },
+    ],
+  },
+};
 
 const CALENDAR_PARTS_FORMATTER = new Intl.DateTimeFormat('en-US-u-ca-persian', {
   year: 'numeric',
@@ -916,6 +984,437 @@ function QuickStatistics({ completed, average, bestDay, overall, monthLabel }) {
         ))}
       </div>
     </section>
+  );
+}
+
+function StatisticsMetricCard({ label, value, detail, badge, icon, tone }) {
+  return (
+    <article className={`statistics-metric-card statistics-metric-${tone}`}>
+      <div className="statistics-metric-topline">
+        <span className="statistics-metric-icon">
+          <DashboardIcon name={icon} />
+        </span>
+        <span className="statistics-metric-badge">{badge}</span>
+      </div>
+      <span className="statistics-metric-label">{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </article>
+  );
+}
+
+function StatisticsTrendChart({ points, rate, periodLabel }) {
+  const [activeIndex, setActiveIndex] = useState(null);
+  const width = 820;
+  const height = 292;
+  const padding = { top: 28, right: 28, bottom: 43, left: 48 };
+  const chartWidth = width - padding.right - padding.left;
+  const chartHeight = height - padding.top - padding.bottom;
+  const gridValues = [100, 75, 50, 25, 0];
+  const pointValues = points.map((point) => Math.round((point.completed / point.total) * 100));
+
+  function getX(index) {
+    return padding.left + (index / (points.length - 1)) * chartWidth;
+  }
+
+  function getY(value) {
+    return padding.top + ((100 - value) / 100) * chartHeight;
+  }
+
+  const linePath = pointValues
+    .map((value, index) => `${index === 0 ? 'M' : 'L'} ${getX(index)} ${getY(value)}`)
+    .join(' ');
+  const areaPath = `${linePath} L ${getX(points.length - 1)} ${getY(0)} L ${getX(0)} ${getY(0)} Z`;
+  const activePoint = activeIndex === null ? null : points[activeIndex];
+  const activeValue = activeIndex === null ? null : pointValues[activeIndex];
+  const activeX = activeIndex === null ? 0 : getX(activeIndex);
+  const activeY = activeValue === null ? 0 : getY(activeValue);
+  const tooltipWidth = 142;
+  const tooltipX = Math.min(width - tooltipWidth - 8, Math.max(8, activeX - tooltipWidth / 2));
+  const tooltipY = Math.max(6, activeY - 63);
+
+  return (
+    <section className="dashboard-card statistics-trend-card" aria-labelledby="statistics-trend-title">
+      <div className="statistics-card-heading statistics-trend-heading">
+        <div>
+          <span className="section-kicker">مسیر پیشرفت</span>
+          <h2 id="statistics-trend-title">روند تکمیل کارها</h2>
+        </div>
+        <span className="statistics-average-pill">
+          <i /> میانگین {toPersianDigits(rate)}٪
+        </span>
+      </div>
+
+      <div className="statistics-chart-meta">
+        <span><i /> نرخ تکمیل</span>
+        <small>{periodLabel}</small>
+      </div>
+
+      <div className="statistics-chart-scroll">
+        <svg
+          className="statistics-trend-chart"
+          viewBox={`0 0 ${width} ${height}`}
+          role="img"
+          aria-label={`نمودار روند تکمیل کارها در ${periodLabel}`}
+        >
+          <defs>
+            <linearGradient id="statistics-area" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ff8e72" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#ff8e72" stopOpacity="0.01" />
+            </linearGradient>
+          </defs>
+
+          {gridValues.map((value) => {
+            const y = getY(value);
+            return (
+              <g className="statistics-chart-grid" key={value}>
+                <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} />
+                <text x={padding.left - 10} y={y + 4}>{toPersianDigits(value)}٪</text>
+              </g>
+            );
+          })}
+
+          <line
+            className="statistics-average-line"
+            x1={padding.left}
+            x2={width - padding.right}
+            y1={getY(rate)}
+            y2={getY(rate)}
+          />
+          <path className="statistics-chart-area" d={areaPath} />
+          <path className="statistics-chart-line" d={linePath} />
+
+          {points.map((point, index) => {
+            const x = getX(index);
+            const y = getY(pointValues[index]);
+            const isActive = index === activeIndex;
+
+            return (
+              <g key={`${point.accessibleLabel}-${index}`}>
+                <text className="statistics-chart-label" x={x} y={height - 14}>{point.label}</text>
+                <g
+                  className={`statistics-chart-point ${isActive ? 'statistics-chart-point-active' : ''}`}
+                  role="button"
+                  tabIndex="0"
+                  aria-label={`${point.accessibleLabel}، ${pointValues[index]} درصد، ${point.completed} از ${point.total} کار`}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onMouseLeave={() => setActiveIndex(null)}
+                  onFocus={() => setActiveIndex(index)}
+                  onBlur={() => setActiveIndex(null)}
+                >
+                  <circle className="statistics-point-hit" cx={x} cy={y} r="12" />
+                  <circle className="statistics-point-halo" cx={x} cy={y} r={isActive ? 8 : 0} />
+                  <circle className="statistics-point-dot" cx={x} cy={y} r={isActive ? 5 : 4} />
+                </g>
+              </g>
+            );
+          })}
+
+          {activePoint && (
+            <g className="statistics-chart-tooltip" transform={`translate(${tooltipX} ${tooltipY})`}>
+              <rect width={tooltipWidth} height="53" rx="11" />
+              <text className="statistics-tooltip-title" x={tooltipWidth - 11} y="20">
+                {activePoint.accessibleLabel}
+              </text>
+              <text className="statistics-tooltip-value" x={tooltipWidth - 11} y="39">
+                {toPersianDigits(activeValue)}٪ · {toPersianDigits(activePoint.completed)} از {toPersianDigits(activePoint.total)} کار
+              </text>
+            </g>
+          )}
+        </svg>
+      </div>
+    </section>
+  );
+}
+
+function StatisticsCategoryBreakdown({ tasks, searchTerm }) {
+  const total = tasks.length;
+  let gradientCursor = 0;
+  const categoryColors = {
+    work: '#7ea36c',
+    personal: '#ff8e72',
+    health: '#6f98a8',
+  };
+  const categories = Object.entries(TASK_CATEGORIES).map(([value, category]) => {
+    const categoryTasks = tasks.filter((task) => task.category === value);
+    const completed = categoryTasks.filter((task) => task.completed).length;
+    const share = total === 0 ? 0 : Math.round((categoryTasks.length / total) * 100);
+    const completion = categoryTasks.length === 0 ? 0 : Math.round((completed / categoryTasks.length) * 100);
+    const start = gradientCursor;
+    gradientCursor += share;
+
+    return {
+      value,
+      ...category,
+      count: categoryTasks.length,
+      share,
+      completion,
+      color: categoryColors[value],
+      start,
+      end: gradientCursor,
+    };
+  });
+  const donutBackground = total === 0
+    ? '#edf0eb'
+    : `conic-gradient(${categories.map((category, index) => (
+        `${category.color} ${category.start}% ${index === categories.length - 1 ? 100 : category.end}%`
+      )).join(', ')})`;
+
+  return (
+    <section className="dashboard-card statistics-breakdown-card" aria-labelledby="statistics-category-title">
+      <div className="statistics-card-heading">
+        <div>
+          <span className="section-kicker">تعادل برنامه</span>
+          <h2 id="statistics-category-title">توزیع دسته‌بندی‌ها</h2>
+        </div>
+        <span className="statistics-card-badge">
+          {searchTerm ? `${toPersianDigits(total)} نتیجه` : 'همه‌ی کارها'}
+        </span>
+      </div>
+
+      <div className="statistics-category-layout">
+        <div
+          className="statistics-donut"
+          style={{ background: donutBackground }}
+          role="img"
+          aria-label={`توزیع ${total} کار در دسته‌بندی‌ها`}
+        >
+          <span>
+            <strong>{toPersianDigits(total)}</strong>
+            <small>کار ثبت‌شده</small>
+          </span>
+        </div>
+
+        <ul className="statistics-category-list">
+          {categories.map((category) => (
+            <li key={category.value}>
+              <i style={{ background: category.color }} />
+              <div>
+                <span>
+                  <strong>{category.label}</strong>
+                  <small>{toPersianDigits(category.count)} کار</small>
+                </span>
+                <span className="statistics-category-progress" aria-label={`${category.completion} درصد تکمیل شده`}>
+                  <i style={{ width: `${category.completion}%`, background: category.color }} />
+                </span>
+              </div>
+              <b>{toPersianDigits(category.share)}٪</b>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function StatisticsPriorityBreakdown({ tasks, searchTerm }) {
+  const priorities = Object.entries(PRIORITIES).map(([value, priority]) => {
+    const priorityTasks = tasks.filter((task) => task.priority === value);
+    const completed = priorityTasks.filter((task) => task.completed).length;
+    return {
+      value,
+      label: priority.label,
+      total: priorityTasks.length,
+      completed,
+      percentage: priorityTasks.length === 0 ? 0 : Math.round((completed / priorityTasks.length) * 100),
+    };
+  });
+  const rankedPriorities = priorities.filter((priority) => priority.total > 0);
+  const bestPriority = rankedPriorities.reduce(
+    (best, priority) => (priority.percentage > best.percentage ? priority : best),
+    rankedPriorities[0] ?? null,
+  );
+
+  return (
+    <section className="dashboard-card statistics-priority-card" aria-labelledby="statistics-priority-title">
+      <div className="statistics-card-heading">
+        <div>
+          <span className="section-kicker">کیفیت تمرکز</span>
+          <h2 id="statistics-priority-title">عملکرد بر اساس اولویت</h2>
+        </div>
+        <span className="statistics-card-badge">{searchTerm ? 'نتایج جست‌وجو' : 'وضعیت فعلی'}</span>
+      </div>
+
+      <div className="statistics-priority-list">
+        {priorities.map((priority) => (
+          <div className={`statistics-priority-row statistics-priority-${priority.value}`} key={priority.value}>
+            <div>
+              <span><i /> اولویت {priority.label}</span>
+              <small>{toPersianDigits(priority.completed)} از {toPersianDigits(priority.total)} کار انجام شده</small>
+              <strong>{toPersianDigits(priority.percentage)}٪</strong>
+            </div>
+            <span className="statistics-priority-track" aria-label={`${priority.percentage} درصد تکمیل شده`}>
+              <i style={{ width: `${priority.percentage}%` }} />
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="statistics-priority-insight">
+        <span><DashboardIcon name={bestPriority ? 'spark' : 'chart'} /></span>
+        <p>
+          {bestPriority ? `بهترین نرخ تکمیل برای اولویت ${bestPriority.label} است.` : 'هنوز کاری برای تحلیل وجود ندارد.'}
+          <small>{bestPriority ? 'این الگو می‌تواند برای برنامه‌ریزی دوره‌ی بعد مفید باشد.' : 'با افزودن کارها، تحلیل اولویت‌ها اینجا نمایش داده می‌شود.'}</small>
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function StatisticsView({ tasks, searchTerm, now }) {
+  const [period, setPeriod] = useState('month');
+  const periodData = STATISTICS_DATA[period];
+  const completed = periodData.points.reduce((sum, point) => sum + point.completed, 0);
+  const total = periodData.points.reduce((sum, point) => sum + point.total, 0);
+  const completionRate = total === 0 ? 0 : Math.round((completed / total) * 100);
+  const change = completionRate - periodData.previousRate;
+  const bestPoint = periodData.points.reduce((best, point) => {
+    const percentage = Math.round((point.completed / point.total) * 100);
+    const bestPercentage = Math.round((best.completed / best.total) * 100);
+    return percentage > bestPercentage ? point : best;
+  }, periodData.points[0]);
+  const bestPointRate = Math.round((bestPoint.completed / bestPoint.total) * 100);
+  const goal = 85;
+  const goalGap = Math.max(0, goal - completionRate);
+  const normalizedSearch = searchTerm.trim().toLocaleLowerCase('fa');
+  const analyzedTasks = normalizedSearch
+    ? tasks.filter((task) => (
+        `${task.title} ${task.description ?? ''}`.toLocaleLowerCase('fa').includes(normalizedSearch)
+      ))
+    : tasks;
+  const metrics = [
+    {
+      label: 'نرخ تکمیل',
+      value: `${toPersianDigits(completionRate)}٪`,
+      detail: 'نسبت کارهای انجام‌شده به کل برنامه',
+      badge: `${change >= 0 ? '+' : ''}${toPersianDigits(change)}٪`,
+      icon: 'target',
+      tone: 'coral',
+    },
+    {
+      label: 'کارهای انجام‌شده',
+      value: toPersianDigits(completed),
+      detail: `از ${toPersianDigits(total)} کار برنامه‌ریزی‌شده`,
+      badge: `+${toPersianDigits(periodData.completedChange)}`,
+      icon: 'check',
+      tone: 'green',
+    },
+    {
+      label: 'روزهای فعال',
+      value: toPersianDigits(periodData.activeDays),
+      detail: periodData.activeDetail,
+      badge: 'پیوسته',
+      icon: 'calendar',
+      tone: 'blue',
+    },
+    {
+      label: 'بهترین پیوستگی',
+      value: `${toPersianDigits(periodData.streak)} روز`,
+      detail: 'بدون وقفه در انجام برنامه',
+      badge: 'رکورد',
+      icon: 'trophy',
+      tone: 'yellow',
+    },
+  ];
+
+  return (
+    <div className="dashboard-content statistics-content">
+      <header className="statistics-page-heading">
+        <div>
+          <span className="welcome-overline">
+            <i /> پیشرفت شما، روشن و قابل اندازه‌گیری
+          </span>
+          <h1>آمارها</h1>
+          <p>الگوی عملکردتان را ببینید، روندها را کشف کنید و برای دوره‌ی بعد بهتر تصمیم بگیرید.</p>
+        </div>
+        <div className="statistics-heading-actions">
+          <time dateTime={now.toISOString().slice(0, 10)}>
+            <DashboardIcon name="calendar" />
+            {MONTH_FORMATTER.format(now)}
+          </time>
+          <div className="statistics-period-control" role="group" aria-label="بازه‌ی زمانی آمارها">
+            {STATISTICS_PERIODS.map((item) => (
+              <button
+                className={period === item.value ? 'statistics-period-active' : ''}
+                type="button"
+                key={item.value}
+                aria-pressed={period === item.value}
+                onClick={() => setPeriod(item.value)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      <section className="statistics-summary-grid" aria-label="خلاصه‌ی آمارها">
+        {metrics.map((metric) => <StatisticsMetricCard {...metric} key={metric.label} />)}
+      </section>
+
+      <div className="statistics-main-grid">
+        <StatisticsTrendChart
+          points={periodData.points}
+          rate={completionRate}
+          periodLabel={periodData.periodLabel}
+          key={period}
+        />
+
+        <section className="statistics-goal-card" aria-labelledby="statistics-goal-title">
+          <div className="statistics-goal-heading">
+            <div>
+              <span>هدف این دوره</span>
+              <h2 id="statistics-goal-title">نرخ تکمیل {toPersianDigits(goal)}٪</h2>
+            </div>
+            <span><DashboardIcon name="target" /></span>
+          </div>
+
+          <div
+            className="statistics-goal-ring"
+            style={{ '--statistics-progress': `${completionRate * 3.6}deg` }}
+            role="img"
+            aria-label={`${completionRate} درصد از هدف دوره تکمیل شده است`}
+          >
+            <span>
+              <strong>{toPersianDigits(completionRate)}٪</strong>
+              <small>تکمیل فعلی</small>
+            </span>
+          </div>
+
+          <p className="statistics-goal-copy">
+            {goalGap === 0
+              ? 'هدف این دوره را پشت سر گذاشته‌اید؛ همین ریتم را حفظ کنید.'
+              : `فقط ${toPersianDigits(goalGap)}٪ تا رسیدن به هدف این دوره فاصله دارید.`}
+          </p>
+
+          <div className="statistics-goal-details">
+            <div>
+              <span><DashboardIcon name="trophy" /></span>
+              <p><small>بهترین عملکرد</small><strong>{bestPoint.accessibleLabel}</strong></p>
+              <b>{toPersianDigits(bestPointRate)}٪</b>
+            </div>
+            <div>
+              <span><DashboardIcon name="trend" /></span>
+              <p><small>نسبت به قبل</small><strong>روند رو به رشد</strong></p>
+              <b>+{toPersianDigits(Math.max(0, change))}٪</b>
+            </div>
+          </div>
+
+          <div className="statistics-goal-note">
+            <DashboardIcon name="spark" />
+            <p>
+              ثبات شما نتیجه داده است.
+              <small>روزهای پربازده را الگوی برنامه‌ی هفته‌ی بعد قرار دهید.</small>
+            </p>
+          </div>
+        </section>
+      </div>
+
+      <div className="statistics-secondary-grid">
+        <StatisticsCategoryBreakdown tasks={analyzedTasks} searchTerm={searchTerm} />
+        <StatisticsPriorityBreakdown tasks={analyzedTasks} searchTerm={searchTerm} />
+      </div>
+    </div>
   );
 }
 
@@ -1716,6 +2215,7 @@ export default function Dashboard({ page = 'dashboard' }) {
   const now = new Date();
   const isTasksPage = page === 'tasks';
   const isCalendarPage = page === 'calendar';
+  const isStatisticsPage = page === 'statistics';
   const calendar = getCurrentCalendar(now);
   const initialMonthlyData = createMonthlyData(calendar);
   const [tasks, setTasks] = useState(INITIAL_TASKS);
@@ -1809,7 +2309,11 @@ export default function Dashboard({ page = 'dashboard' }) {
           onToggleNotifications={() => setNotificationsOpen((current) => !current)}
           searchPlaceholder={isCalendarPage
             ? 'جست‌وجو در کارهای تقویم...'
-            : isTasksPage ? 'جست‌وجو در همه‌ی کارها...' : 'جست‌وجو در کارهای امروز...'}
+            : isTasksPage
+              ? 'جست‌وجو در همه‌ی کارها...'
+              : isStatisticsPage
+                ? 'فیلتر آمار بر اساس عنوان کار...'
+                : 'جست‌وجو در کارهای امروز...'}
         />
 
         {isTasksPage ? (
@@ -1839,6 +2343,12 @@ export default function Dashboard({ page = 'dashboard' }) {
             onSelectDate={setSelectedCalendarDate}
             onToggle={toggleTask}
             onAddTask={() => setAddTaskOpen(true)}
+          />
+        ) : isStatisticsPage ? (
+          <StatisticsView
+            tasks={tasks}
+            searchTerm={searchTerm}
+            now={now}
           />
         ) : (
           <div className="dashboard-content">
